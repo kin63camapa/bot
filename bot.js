@@ -20,11 +20,10 @@ var tmp = -1;
 var sellOrder = 0;
 var buyOrder = 0;
 
-if (lastSellOrder == 0) lastSellOrder = max-0.001;
-if (lastBuyOrder == 0) lastBuyOrder = min+0.001;
 if (lastSellOrder == "auto") lastSellOrder = trader.get("LastMySellPrice");
 if (lastBuyOrder == "auto") lastBuyOrder = trader.get("LastMyBuyPrice");
-
+if (lastSellOrder == 0) lastSellOrder = max-0.001;
+if (lastBuyOrder == 0) lastBuyOrder = min+0.001;
 
 trader.log("now start");
 trader.log("range ", range);
@@ -32,7 +31,6 @@ trader.log("max ", max.toFixed(3));
 trader.log("min ", min.toFixed(3));
 trader.log("lso ", lastSellOrder.toFixed(3));
 trader.log("lbo ", lastBuyOrder.toFixed(3));
-
 
 trader.on("LastPrice").changed()
 {
@@ -110,7 +108,7 @@ trader.on("LastPrice").changed()
             upStep = 0;
             dwStep = 0;
             max = max+trader.get("LastPrice")-min;
-            //range = trader.get("LastPrice")/100*0.5;
+            range = trader.get("LastPrice")/100*0.5;
             if (max<(min+range)) max=min+range;
             if (max>(min+range*2)) max=min+range*1.5;
             trader.log("max changed ",max.toFixed(3));
@@ -123,7 +121,7 @@ trader.on("LastPrice").changed()
             }
             if (onlyOneOrder && buyOrder){ trader.log("новый ордер не создан"); return; }
             tmp = trader.get("Balance","USD")/(min+0.001);
-            if (min < lastSellOrder-range)
+            if (min < lastSellOrder-(lastSellOrder/100*0.5;))
             {
                 if (tmp < 0.01) { trader.log("вы нищеброд"); return; }
                 if (tmp > maxCoins) tmp = maxCoins;
