@@ -4,21 +4,21 @@ var pair = "USD";
 var minCoins = 0.1;
 //размер минимальной ставки разрешенной на бирже для пары
 var lastSellOrder = 0;
-//цена последнего ордера на продажу 0 - не важно; "auto" - по последней своей сделке 
+//цена последнего ордера на продажу 0 - не важно; "auto" - по последней своей сделке
 var lastBuyOrder = 0;
-//цена последнего ордера на покупку 0 - не важно; "auto" - по последней своей сделке 
+//цена последнего ордера на покупку 0 - не важно; "auto" - по последней своей сделке
 var steps = 3;
 //индекс жадности от 0 до бесконечнноти (10 - очень жадный бот c большими шансами улететь в лонг сразу же 1-2 шорты)
 var dwSkip = 0;
 var upSkip = 2;
 //сколько шагов пропустить вверх или вниз
 var maxCoins = 0.5;
-//максимальная ставка в %coin% 
+//максимальная ставка в %coin%
 var allowRisk = 0;
 //разрешить сделки в минус (на свой страх и риск) 0 - нет; 1-да
 var onlyOneOrder = 0;
 //запретить ставить больше одного ордера 1 - да; 0 - нет
-var fee = 0.2
+var fee = trader.get("Fee");
 //комиссия биржи
 
 var range = (trader.get("LastPrice")/100)*(fee*3);
@@ -33,6 +33,9 @@ if (lastBuyOrder == "auto") lastBuyOrder = trader.get("LastMyBuyPrice");
 if (lastSellOrder == 0) lastSellOrder = max-0.001;
 if (lastBuyOrder == 0) lastBuyOrder = min+0.001;
 if (minCoins > maxCoins) trader.log("ПРОВЕРЬ НАСТРОЙКИ!!!");
+
+var averagePrise = lastSellOrder;
+var amountBuy = 0;
 
 trader.log("now start");
 trader.log("range ", range);
@@ -65,12 +68,22 @@ trader.on("LastPrice").changed()
             trader.log("min recalculated ",min.toFixed(3));
             if (onlyOneOrder && trader.get("OpenOrdersCount")){ trader.log("новый ордер не создан"); return; }
             tmp = trader.get("Balance",coin);
-            if (max > lastBuyOrder+range || allowRisk)
-            {   
+            if (max > averagePrise+range || allowRisk)
+            {
                 if (tmp < minCoins){ trader.log("вы нищеброд"); return; }
                 if (tmp >= maxCoins && tmp-maxCoins >=  maxCoins ) tmp = maxCoins;
                 trader.sell(tmp,max);
+                if ((amountBuy-tmp)>0)
+                {
+                    averagePrise = (averagePrise*amountBuy-max*tmp)/(amountBuy-tmp);
+                    amountBuy -= tmp;
+                }else
+                {
+                    averagePrise = lastSellOrder;
+                    amountBuy = 0;
+                }
                 sellOrder = lastSellOrder = max;
+
             }
             else trader.log("отказ делать невыгодную ставку: покупка за",lastBuyOrder," не окупится");
         }
@@ -95,14 +108,23 @@ trader.on("LastPrice").changed()
             trader.log("max recalculated ",max.toFixed(3));
             if (onlyOneOrder && trader.get("OpenOrdersCount")){ trader.log("новый ордер не создан"); return; }
             tmp = trader.get("Balance",pair)/(min+0.001);
-            if (min < (lastSellOrder-((lastSellOrder/100)*fee*3))||allowRisk)
+            if (min < (averagePrise-((lastSellOrder/100)*fee*3))||allowRisk)
             {
                 if (tmp < minCoins) { trader.log("вы нищеброд"); return; }
                 if (tmp > maxCoins) tmp = maxCoins;
-                if (minCoins == maxCoins)
-                    if (trader.get("Balance",coin) < ((tmp/100)*fee+0.001))
-                        tmp=tmp+(tmp/100)*fee+0.001;
+                if (maxCoins < minCoins+(tmp/100)*2*fee)
+                {
+                    trader.log("chech balance");
+                    if (trader.get("Balance",coin) < ((tmp/100)*2*fee))
+                    {
+                        trader.log("low coin balance add margin");
+                        tmp=tmp+(tmp/100)*2*fee;
+                    }
+                    trader.log("tmp=",tmp);
+                }
                 trader.buy(tmp,min);
+                averagePrise = (averagePrise*amountBuy+min*tmp)/(amountBuy+tmp);
+                amountBuy += tmp;
                 buyOrder = lastBuyOrder = min;
             }
             else trader.log("отказ делать невыгодную ставку: продажа за",lastSellOrder," не окупится");
