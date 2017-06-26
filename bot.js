@@ -32,6 +32,7 @@ if (lastSellOrder == "auto") lastSellOrder = trader.get("LastMySellPrice");
 if (lastBuyOrder == "auto") lastBuyOrder = trader.get("LastMyBuyPrice");
 if (lastSellOrder == 0) lastSellOrder = max-0.001;
 if (lastBuyOrder == 0) lastBuyOrder = min+0.001;
+if (minCoins > maxCoins) trader.log("ПРОВЕРЬ НАСТРОЙКИ!!!");
 
 trader.log("now start");
 trader.log("range ", range);
@@ -98,6 +99,9 @@ trader.on("LastPrice").changed()
             {
                 if (tmp < minCoins) { trader.log("вы нищеброд"); return; }
                 if (tmp > maxCoins) tmp = maxCoins;
+                if (minCoins == maxCoins)
+                    if (trader.get("Balance",coin) < ((tmp/100)*fee+0.001))
+                        tmp=tmp+(tmp/100)*fee+0.001;
                 trader.buy(tmp,min);
                 buyOrder = lastBuyOrder = min;
             }
